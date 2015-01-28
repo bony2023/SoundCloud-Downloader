@@ -1,4 +1,4 @@
-## SoundCloud Downloader
+# SoundCloud Downloader
 
 Downloads tracks from soundcloud.
 
@@ -15,5 +15,4 @@ OR
 ```
 
 ### TODO
-* Downloading the whole playlist.
 * Adding metatags to downloaded tracks.

@@ -1,10 +1,27 @@
 import urllib2
 import sys
 
+bs4 = True
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    import BeautifulSoup
+    bs4 = False
+
 MAIN_URL='https://api.soundcloud.com/tracks/'
 TRACK_ID=''
 STREAM='/stream?client_id='
 CLIENT_ID='6862b458caa60ca20447985771260f7b'
+
+def get_beautiful_soup(html):
+    if bs4:
+        return BeautifulSoup(html)
+    else:
+        return BeautifulSoup.BeautifulSoup(html)
+
+def print_usage():
+  print "python soundcloud_downloader2.py [url1] [url2] [url3] [...]"
+  sys.exit(0)
 
 def parse(string_parse):
     tmp_id=''
@@ -18,6 +35,7 @@ def get_track_id(track_url):
     file_name=track_url.split('/')[-1]+'.mp3'
     track_url=track_url.split('soundcloud.com')[-1]
     track_url='https://soundcloud.com'+track_url
+    print track_url
     track_id=''
     tempstr=str(urllib2.urlopen(track_url).read())
     track_id=parse(tempstr.split('sounds:')[-1])
@@ -50,12 +68,48 @@ def download_track(url, location):
     f.close()
     print 'Track Downloaded\n'
     
+def is_playlist(uri):
+    parts = uri.split('/')
+    unusable = ['http:', 'https:', '', 'soundcloud.com']
+    actual_parts = []
+    for part in parts:
+        if part not in unusable:
+            actual_parts.append(part)
+
+    if len(actual_parts) == 1:
+        return True
+    else:
+        return False
+
+def parse_playlist(url):
+    playlist = []
+    soup = get_beautiful_soup( urllib2.urlopen(url).read() )
+    soup = soup.find_all('article')
+    soup = soup[1:]
+    for track in soup:
+        url = 'http://soundcloud.com' + track.h1.a['href']
+        playlist.append(url)
+
+    return playlist
+
 if __name__=='__main__':
-    for track in sys.argv:
-        if track==sys.argv[0]:
-            continue
-        (file_name, TRACK_ID)=get_track_id(track)
-        download_url=MAIN_URL+TRACK_ID+STREAM+CLIENT_ID
-        show_details(file_name, download_url)
-        location=raw_input('Save to location(eg. /bin): ')
-        download_track(download_url, location+'/'+file_name)
+    if len(sys.argv) == 1:
+        print_usage()
+
+    for track_url in sys.argv[1 : ]:
+
+        url_to_download = []
+
+        if is_playlist(track_url):
+            url_to_download += parse_playlist(track_url)
+        else:
+            url_to_download.append(track_url)
+
+        for track in url_to_download:
+            (file_name, TRACK_ID) = get_track_id(track)
+            download_url=MAIN_URL+TRACK_ID+STREAM+CLIENT_ID
+            show_details(file_name, download_url)
+            location=raw_input('Save to location(eg. ~/downloads): ')
+            download_track(download_url, location+'/'+file_name)    
+
+
